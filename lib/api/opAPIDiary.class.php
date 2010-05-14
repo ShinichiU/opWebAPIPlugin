@@ -14,32 +14,32 @@
  * @package    OpenPNE
  * @subpackage api
  * @author     Kousuke Ebihara <ebihara@tejimaya.com>
+ * @author     Shinichi Urabe <urabe@tejimaya.com>
  */
 class opAPIDiary extends opAPI implements opAPIInterface
 {
   public function feed()
   {
-    if ($id = $this->getParameter('member_id'))
-    {
-      $diaries = Doctrine::getTable('Diary')->getMemberDiaryPager($id, $this->getParameter('_pg', 1));
-    }
-    else
-    {
-      $diaries = Doctrine::getTable('Diary')->getDiaryPager($this->getParameter('_pg', 1));
-    }
+    $this
+      ->addConditionSearchQuery()
+      ->addConditionPublished()
+      ->addConditionUpdated()
+      ->setOffsetAndLimitation()
+      ->setOrderBy();
 
-    if (!$result = $diaries->getResults())
+    $diaries = $this->getRouteObject()->execute();
+    if (!$diaries->count())
     {
       return false;
     }
 
-    $feed = $this->getGeneralFeed('Diaries');
-    foreach ($result as $diary)
+    $feed = $this->getGeneralFeed('Diaries', $this->getTotalCount());
+    foreach ($diaries as $key => $diary)
     {
       $entry = $feed->addEntry();
       $this->createEntryByInstance($diary, $entry);
     }
-    $feed->setUpdated($result[0]->getCreatedAt());
+    $feed->setUpdated($diaries->getFirst()->getCreatedAt());
 
     return $feed->publish();
   }
